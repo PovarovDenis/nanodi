@@ -1,17 +1,17 @@
-# nanodi
+# silverbullet-di
 
 A super simple TypeScript dependency injection container with full type safety.
 
 ## Installation
 
 ```bash
-npm install nanodi
+npm install silverbullet-di
 ```
 
 ## Usage
 
 ```typescript
-import { createContainer } from 'nanodi';
+import { createContainer } from 'silverbullet-di';
 
 // Create a container
 const container = createContainer();
