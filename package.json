@@ -1,5 +1,5 @@
 {
-  "name": "nanodi",
+  "name": "microdi",
   "version": "1.0.0",
   "description": "A super simple TypeScript dependency injection container",
   "main": "dist/index.js",
