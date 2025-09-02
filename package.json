@@ -20,6 +20,10 @@
   ],
   "author": "Denis Povarov",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/denispovarov/silverbullet-di.git"
+  },
   "devDependencies": {
     "typescript": "^5.0.0"
   },
