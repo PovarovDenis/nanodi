@@ -1,0 +1,29 @@
+{
+  "name": "nanodi",
+  "version": "1.0.0",
+  "description": "A super simple TypeScript dependency injection container",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "dependency-injection",
+    "di",
+    "container",
+    "typescript",
+    "ioc"
+  ],
+  "author": "Denis Povarov",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
