@@ -111,6 +111,10 @@ The container provides clear error messages:
 - `Cannot redefine service 'X' after it has been instantiated` - when trying to override instantiated service
 - `Failed to instantiate service 'X': [reason]` - when factory function throws an error
 
+## Author
+
+Created by [Denis Povarov](https://denpo.dev)
+
 ## License
 
 MIT
