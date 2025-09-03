@@ -155,12 +155,19 @@ export const resetContainer = (): void => {
 
 **worker.ts**
 ```typescript
-import { initContainer, getContainer } from './container';
+import { initContainer, getContainer, type Container } from './container';
 import type { Config, Logger, Database } from './types';
 
-export default {
-  async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
-    // Initialize container with environment context
+/**
+ * Initialize container with services if not already initialized
+ * This function is safe to call multiple times
+ */
+function ensureContainerInitialized(env: any): Container {
+  try {
+    // Check if container is already initialized
+    return getContainer();
+  } catch {
+    // Container not initialized, proceed with initialization
     const container = initContainer();
     
     // Register configuration from environment
@@ -184,6 +191,15 @@ export default {
       const config = container.get<Config>('config');
       return new DatabaseClient(config.databaseUrl, config.apiKey);
     });
+    
+    return container;
+  }
+}
+
+export default {
+  async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
+    // Ensure container is initialized (safe to call on every request)
+    const container = ensureContainerInitialized(env);
     
     // Use services (can now be used in other files too)
     const logger = container.get<Logger>('logger');
