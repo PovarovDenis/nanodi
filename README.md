@@ -15,6 +15,8 @@ npm install silverbullet-di
 - **Multiple identifiers** - Use strings, symbols, or class constructors
 - **Service protection** - Prevents accidental service redefinition
 - **Zero dependencies** - Lightweight and fast
+- **Universal compatibility** - Works in Node.js, browsers, and Cloudflare Workers
+- **Ultra-lightweight** - Only 729 bytes compiled
 
 ## Usage
 
@@ -79,6 +81,137 @@ if (container.has('logger')) {
 
 // Clear all services
 container.clear();
+```
+
+### Cloudflare Workers Usage
+
+Perfect for edge computing with zero cold start overhead. For better organization, create separate modules:
+
+**types.ts**
+```typescript
+export interface Config {
+  databaseUrl: string;
+  logLevel: string;
+  apiKey: string;
+}
+
+export interface Logger {
+  info: (msg: string) => void;
+  error: (msg: string) => void;
+}
+
+export interface Database {
+  query: (sql: string) => Promise<any>;
+}
+```
+
+**container.ts**
+```typescript
+import { createContainer, type Container } from 'silverbullet-di';
+
+// Global container instance
+let container: Container | null = null;
+
+/**
+ * Initialize the DI container
+ * This should be called once during application startup
+ */
+export const initContainer = (): Container => {
+  if (container) {
+    throw new Error('Container is already initialized. Call initContainer() only once.');
+  }
+
+  container = createContainer();
+  return container;
+};
+
+/**
+ * Get the initialized container instance
+ * Throws an error if container hasn't been initialized
+ */
+export const getContainer = (): Container => {
+  if (!container) {
+    throw new Error('Container not initialized. Call initContainer() first.');
+  }
+
+  return container;
+};
+
+/**
+ * Check if container has been initialized
+ */
+export const isContainerInitialized = (): boolean => {
+  return container !== null;
+};
+
+/**
+ * Reset container (mainly for testing purposes)
+ * @internal
+ */
+export const resetContainer = (): void => {
+  container = null;
+};
+```
+
+**worker.ts**
+```typescript
+import { initContainer, getContainer } from './container';
+import type { Config, Logger, Database } from './types';
+
+export default {
+  async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
+    // Initialize container with environment context
+    const container = initContainer();
+    
+    // Register configuration from environment
+    container.set('config', {
+      databaseUrl: env.DATABASE_URL,
+      logLevel: env.LOG_LEVEL || 'info',
+      apiKey: env.API_KEY
+    });
+    
+    // Register logger with factory
+    container.set('logger', (container) => {
+      const config = container.get<Config>('config');
+      return {
+        info: (msg: string) => config.logLevel === 'info' && console.log(msg),
+        error: (msg: string) => console.error(msg)
+      };
+    });
+    
+    // Register database service
+    container.set('db', (container) => {
+      const config = container.get<Config>('config');
+      return new DatabaseClient(config.databaseUrl, config.apiKey);
+    });
+    
+    // Use services (can now be used in other files too)
+    const logger = container.get<Logger>('logger');
+    const db = container.get<Database>('db');
+    
+    logger.info('Processing request');
+    const data = await db.query('SELECT * FROM users');
+    
+    return new Response(JSON.stringify(data));
+  }
+};
+```
+
+**other-service.ts**
+```typescript
+import { getContainer } from './container';
+import type { Database, Logger } from './types';
+
+export class UserService {
+  async getUsers() {
+    const container = getContainer();
+    const db = container.get<Database>('db');
+    const logger = container.get<Logger>('logger');
+    
+    logger.info('Fetching users');
+    return await db.query('SELECT * FROM users');
+  }
+}
 ```
 
 ## API
