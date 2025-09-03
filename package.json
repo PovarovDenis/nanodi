@@ -1,6 +1,6 @@
 {
   "name": "silverbullet-di",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "A super simple TypeScript dependency injection container",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -22,7 +22,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/denispovarov/silverbullet-di.git"
+    "url": "https://github.com/povarovdenis/silverbullet-di.git"
   },
   "devDependencies": {
     "typescript": "^5.0.0"
