@@ -109,106 +109,92 @@ export interface Database {
 ```typescript
 import { createContainer, type Container } from 'silverbullet-di';
 
-// Global container instance
-let container: Container | null = null;
+// AsyncLocalStorage for request-scoped container isolation
+const containerStorage = new AsyncLocalStorage<Container>();
 
 /**
- * Initialize the DI container
- * This should be called once during application startup
+ * Initialize the DI container for the current request context
+ * This creates a new container instance per request to avoid sharing state
  */
 export const initContainer = (): Container => {
-  if (container) {
-    throw new Error('Container is already initialized. Call initContainer() only once.');
-  }
-
-  container = createContainer();
+  const container = createContainer();
   return container;
 };
 
 /**
- * Get the initialized container instance
- * Throws an error if container hasn't been initialized
+ * Get the container instance for the current request
+ * Must be called within a request context established by runWithContainer
  */
 export const getContainer = (): Container => {
+  const container = containerStorage.getStore();
   if (!container) {
-    throw new Error('Container not initialized. Call initContainer() first.');
+    throw new Error('Container not available. Make sure to call runWithContainer() first.');
   }
-
   return container;
 };
 
 /**
- * Check if container has been initialized
+ * Run a function with a container in the current async context
+ * This ensures the container is available to all async operations within the callback
  */
-export const isContainerInitialized = (): boolean => {
-  return container !== null;
-};
-
-/**
- * Reset container (mainly for testing purposes)
- * @internal
- */
-export const resetContainer = (): void => {
-  container = null;
+export const runWithContainer = <T>(container: Container, callback: () => T): T => {
+  return containerStorage.run(container, callback);
 };
 ```
 
 **worker.ts**
 ```typescript
-import { initContainer, getContainer, type Container } from './container';
+import { initContainer, runWithContainer } from './container';
 import type { Config, Logger, Database } from './types';
 
 /**
- * Initialize container with services if not already initialized
- * This function is safe to call multiple times
+ * Create and configure a new container for the request
+ * Each request gets its own container instance to avoid state sharing
  */
-function ensureContainerInitialized(env: any): Container {
-  try {
-    // Check if container is already initialized
-    return getContainer();
-  } catch {
-    // Container not initialized, proceed with initialization
-    const container = initContainer();
-    
-    // Register configuration from environment
-    container.set('config', {
-      databaseUrl: env.DATABASE_URL,
-      logLevel: env.LOG_LEVEL || 'info',
-      apiKey: env.API_KEY
-    });
-    
-    // Register logger with factory
-    container.set('logger', (container) => {
-      const config = container.get<Config>('config');
-      return {
-        info: (msg: string) => config.logLevel === 'info' && console.log(msg),
-        error: (msg: string) => console.error(msg)
-      };
-    });
-    
-    // Register database service
-    container.set('db', (container) => {
-      const config = container.get<Config>('config');
-      return new DatabaseClient(config.databaseUrl, config.apiKey);
-    });
-    
-    return container;
-  }
+function createRequestContainer(env: any) {
+  const container = initContainer();
+  
+  // Register configuration from environment
+  container.set('config', {
+    databaseUrl: env.DATABASE_URL,
+    logLevel: env.LOG_LEVEL || 'info',
+    apiKey: env.API_KEY
+  });
+  
+  // Register logger with factory
+  container.set('logger', (container) => {
+    const config = container.get<Config>('config');
+    return {
+      info: (msg: string) => config.logLevel === 'info' && console.log(msg),
+      error: (msg: string) => console.error(msg)
+    };
+  });
+  
+  // Register database service
+  container.set('db', (container) => {
+    const config = container.get<Config>('config');
+    return new DatabaseClient(config.databaseUrl, config.apiKey);
+  });
+  
+  return container;
 }
 
 export default {
   async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
-    // Ensure container is initialized (safe to call on every request)
-    const container = ensureContainerInitialized(env);
+    // Create a new container for this request
+    const container = createRequestContainer(env);
     
-    // Use services (can now be used in other files too)
-    const logger = container.get<Logger>('logger');
-    const db = container.get<Database>('db');
-    
-    logger.info('Processing request');
-    const data = await db.query('SELECT * FROM users');
-    
-    return new Response(JSON.stringify(data));
+    // Run the request handler within the container context
+    return runWithContainer(container, async () => {
+      // Container is now available to all async operations in this context
+      const logger = container.get<Logger>('logger');
+      const db = container.get<Database>('db');
+      
+      logger.info('Processing request');
+      const data = await db.query('SELECT * FROM users');
+      
+      return new Response(JSON.stringify(data));
+    });
   }
 };
 ```

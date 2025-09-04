@@ -1,6 +1,6 @@
 {
   "name": "silverbullet-di",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "A super simple TypeScript dependency injection container",
   "type": "module",
   "main": "dist/index.js",
